@@ -2,10 +2,13 @@ import pandas as pd
 
 import lotus
 from lotus.models import LM
+from lotus.cache import CacheFactory, CacheConfig, CacheType
 
-lm = LM(model="gpt-4o-mini")
+cache_config = CacheConfig(cache_type=CacheType.SQLITE, max_size=10000000, cache_dir=os.path.expanduser("~/.lotus/cache"))
+cache = CacheFactory.create_cache(cache_config)
+lm = LM(model="gpt-4o-mini", cache=cache)
 
-lotus.settings.configure(lm=lm)
+lotus.settings.configure(lm=lm, enable_cache=True)
 data = {
     "Course Name": [
         "History of the Atlantic World",

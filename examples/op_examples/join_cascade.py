@@ -4,12 +4,17 @@ import lotus
 from lotus.models import LM, SentenceTransformersRM
 from lotus.types import CascadeArgs
 from lotus.vector_store import FaissVS
+from lotus.cache import CacheFactory, CacheConfig, CacheType
+import os
 
-lm = LM(model="gpt-4o-mini")
+
+cache_config = CacheConfig(cache_type=CacheType.SQLITE, max_size=10000000, cache_dir=os.path.expanduser("~/.lotus/cache"))
+cache = CacheFactory.create_cache(cache_config)
+lm = LM(model="gpt-4o-mini", cache=cache)
 rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
 vs = FaissVS()
 
-lotus.settings.configure(lm=lm, rm=rm, vs=vs)
+lotus.settings.configure(lm=lm, rm=rm, vs=vs, enable_cache=True)
 data = {
     "Course Name": [
         "Digital Design and Integrated Circuits",
