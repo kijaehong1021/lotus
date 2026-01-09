@@ -13,6 +13,8 @@ class Settings:
     reranker: lotus.models.Reranker | None = None
     vs: lotus.vector_store.VS | None = None
 
+    use_fake_lm: bool = False
+
     # Cache settings
     enable_cache: bool = False
 

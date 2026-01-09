@@ -30,6 +30,7 @@ def sem_join(
     safe_mode: bool = False,
     show_progress_bar: bool = True,
     progress_bar_desc: str = "Join comparisons",
+    use_fake_lm: bool = False,
 ) -> SemanticJoinOutput:
     """
     Joins two pandas Series using a language model based on semantic similarity.
@@ -92,6 +93,8 @@ def sem_join(
         ...                   model, "Are these topics related?")
         >>> print(result.join_results)  # List of matching pairs
     """
+    assert False, "sem_join is not implemented yet"
+    lotus.logger.info("executing sem_join")
     filter_outputs = []
     all_raw_outputs = []
     all_explanations = []
@@ -144,6 +147,7 @@ def sem_join(
         default=default,
         strategy=strategy,
         show_progress_bar=False,
+        use_fake_lm=use_fake_lm,
     )
 
     outputs = output.outputs
@@ -195,6 +199,7 @@ def sem_join_cascade(
     default: bool = True,
     strategy: ReasoningStrategy | None = None,
     safe_mode: bool = False,
+    use_fake_lm: bool = False,
 ) -> SemanticJoinOutput:
     """
     Joins two series using a cascade helper model and a oracle model.
@@ -298,6 +303,7 @@ def sem_join_cascade(
         default=default,
         strategy=strategy,
         show_progress_bar=True,
+        use_fake_lm=use_fake_lm,
     )
 
     pbar.update(num_large)
@@ -666,7 +672,7 @@ class SemJoinDataframe:
         if not isinstance(obj, pd.DataFrame):
             raise AttributeError("Must be a DataFrame")
 
-    @operator_cache
+    #@operator_cache
     def __call__(
         self,
         other: pd.DataFrame | pd.Series,
@@ -681,7 +687,9 @@ class SemJoinDataframe:
         return_stats: bool = False,
         safe_mode: bool = False,
         progress_bar_desc: str = "Join comparisons",
+        use_fake_lm: bool = False,
     ) -> pd.DataFrame:
+        print("=== sem_join __call__ 함수 시작 ===")
         model = lotus.settings.lm
         if model is None:
             raise ValueError(
@@ -748,6 +756,7 @@ class SemJoinDataframe:
             and (cascade_args.recall_target is not None or cascade_args.precision_target is not None)
             and (num_full_join >= cascade_args.min_join_cascade_size)
         ):
+            # print("executing sem_join_cascade")
             cascade_args.recall_target = 1.0 if cascade_args.recall_target is None else cascade_args.recall_target
             cascade_args.precision_target = (
                 1.0 if cascade_args.precision_target is None else cascade_args.precision_target
@@ -770,8 +779,10 @@ class SemJoinDataframe:
                 default=default,
                 strategy=strategy,
                 safe_mode=safe_mode,
+                use_fake_lm=use_fake_lm,
             )
         else:
+            # print("executing sem_join")
             output = sem_join(
                 self._obj[real_left_on],
                 other[real_right_on],
@@ -788,6 +799,7 @@ class SemJoinDataframe:
                 strategy=strategy,
                 safe_mode=safe_mode,
                 progress_bar_desc=progress_bar_desc,
+                use_fake_lm=use_fake_lm,
             )
         join_results = output.join_results
         all_raw_outputs = output.all_raw_outputs

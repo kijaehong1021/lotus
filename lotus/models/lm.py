@@ -6,9 +6,11 @@ import warnings
 from typing import Any
 
 import numpy as np
+from google import genai
+from google.genai import types
 from litellm import batch_completion
 from litellm.exceptions import AuthenticationError
-from litellm.types.utils import ChatCompletionTokenLogprob, ChoiceLogprobs, Choices, ModelResponse
+from litellm.types.utils import ChatCompletionTokenLogprob, ChoiceLogprobs, Choices, ModelResponse, Message, Usage
 from litellm.utils import token_counter
 from openai._exceptions import OpenAIError
 from pydantic import BaseModel
@@ -29,6 +31,131 @@ from lotus.types import (
 
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 logging.getLogger("httpx").setLevel(logging.CRITICAL)
+
+
+# by kjhong
+def generateFakeLMResponse() -> ModelResponse:
+
+    return ModelResponse(
+        choices=[Choices(message=Message(content="Answer: True"))],
+        usage=Usage(prompt_tokens=10, completion_tokens=10, total_tokens=20),
+    )
+
+def generateGeminiResponse(
+    model: str, messages: list[dict[str, str]], **kwargs: dict[str, Any]
+) -> ModelResponse:
+    """
+    Generate a response using Google Gemini API and convert it to ModelResponse format.
+    
+    Args:
+        model: The Gemini model name (e.g., "gemini-3-flash-preview")
+        messages: List of message dictionaries with "role" and "content" keys
+        **kwargs: Additional parameters for the API call (temperature, max_tokens, etc.)
+    
+    Returns:
+        ModelResponse: Response in LiteLLM ModelResponse format
+    """
+    client = genai.Client()
+    
+    # Separate system message from other messages
+    system_instruction = None
+    contents = []
+    
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        
+        if role == "system":
+            # System messages are handled via system_instruction parameter
+            system_instruction = content
+        elif role == "user":
+            # Convert to Gemini Content format
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=content)]
+                )
+            )
+        elif role == "assistant":
+            # Convert to Gemini Content format
+            contents.append(
+                types.Content(
+                    role="model",
+                    parts=[types.Part(text=content)]
+                )
+            )
+    
+    # Extract config parameters from kwargs
+    temperature = kwargs.pop("temperature", None)
+    max_tokens = kwargs.pop("max_tokens", None)
+    max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+    
+    # Use max_output_tokens (Gemini API parameter name)
+    max_output_tokens = max_tokens or max_completion_tokens
+    
+    # Build GenerateContentConfig
+    config_params = {}
+    if system_instruction is not None:
+        config_params["system_instruction"] = system_instruction
+    if temperature is not None:
+        config_params["temperature"] = temperature
+    if max_output_tokens is not None:
+        config_params["max_output_tokens"] = max_output_tokens
+    
+    # Add any remaining kwargs to config
+    config_params.update(kwargs)
+    
+    config = types.GenerateContentConfig(**config_params) if config_params else None
+    
+    # Prepare contents for Gemini API
+    # If we have Content objects (multi-turn or assistant messages), use them
+    # Otherwise, if we have a single user message, use string format
+    if not contents:
+        # No messages (shouldn't happen, but handle gracefully)
+        contents_input = ""
+    elif len(contents) == 1 and contents[0].role == "user" and len(contents[0].parts) == 1:
+        # Simple case: single user message - use string format
+        contents_input = contents[0].parts[0].text
+    else:
+        # Multi-turn conversation or assistant messages - use Content list
+        contents_input = contents
+    
+    response = client.models.generate_content(
+        model=model,
+        contents=contents_input,
+        config=config,
+    )
+    
+    # Extract response text
+    response_text = response.text if hasattr(response, "text") else str(response)
+    
+    # Extract usage information if available
+    prompt_tokens = 0
+    completion_tokens = 0
+    if hasattr(response, "usage_metadata"):
+        usage_metadata = response.usage_metadata
+        prompt_tokens = getattr(usage_metadata, "prompt_token_count", 0) or 0
+        completion_tokens = getattr(usage_metadata, "completion_token_count", 0) or 0
+    
+    # Create ModelResponse
+    return ModelResponse(
+        choices=[Choices(message=Message(content=response_text))],
+        usage=Usage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+        ),
+    )
+
+# by kjhong
+def batchCompletion(model: str, batch: list[list[dict[str, str]]], 
+    drop_params: bool = True, max_workers: int = 64, **kwargs: dict[str, Any]) -> list[ModelResponse]:
+
+    if model in ['gemma-3-27b']:
+        return [generateGeminiResponse(model, msg) for msg in batch]
+    else:
+        return batch_completion(model, batch, drop_params, max_workers, **kwargs)
+
 
 
 class LM:
@@ -114,6 +241,7 @@ class LM:
         messages: list[list[dict[str, str]]],
         show_progress_bar: bool = True,
         progress_bar_desc: str = "Processing uncached messages",
+        use_fake_lm: bool = False,
         **kwargs: dict[str, Any],
     ) -> LMOutput:
         all_kwargs = {**self.kwargs, **kwargs}
@@ -122,13 +250,20 @@ class LM:
         if all_kwargs.get("logprobs", False):
             all_kwargs.setdefault("top_logprobs", 10)
 
-        if lotus.settings.enable_cache:
+        # print(f"LM call with kwargs: {all_kwargs}")
+
+        
+        if use_fake_lm: # Fake LM mode (by kjhong)
+            hashed_messages = [self._hash_messages(msg, all_kwargs) for msg in messages]
+            cached_responses = [generateFakeLMResponse() for _ in hashed_messages]
+        elif lotus.settings.enable_cache:
             # Check cache and separate cached and uncached messages
             hashed_messages = [self._hash_messages(msg, all_kwargs) for msg in messages]
             cached_responses_raw = [self.cache.get(hash) for hash in hashed_messages]
             # Filter out None values and ensure they are ModelResponse
             cached_responses: list[ModelResponse | None] = []
             for resp in cached_responses_raw:
+                #print(f"Cached response: {resp}")
                 if resp is None:
                     cached_responses.append(None)
                 elif isinstance(resp, ModelResponse):
@@ -235,7 +370,7 @@ class LM:
         if self.rate_limit is not None:
             uncached_responses = self._process_with_rate_limiting(batch, all_kwargs, pbar)
         else:
-            uncached_responses = batch_completion(
+            uncached_responses = batchCompletion(
                 self.model, batch, drop_params=True, max_workers=self.max_batch_size, **all_kwargs
             )
             pbar.update(total_calls)
@@ -271,7 +406,7 @@ class LM:
             start_idx = i * self.max_batch_size
             end_idx = min((i + 1) * self.max_batch_size, len(batch))
             sub_batch = batch[start_idx:end_idx]
-            sub_responses = batch_completion(
+            sub_responses = batchCompletion(
                 self.model, sub_batch, drop_params=True, max_workers=self.max_batch_size, **all_kwargs
             )
             responses.extend(sub_responses)

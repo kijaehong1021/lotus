@@ -10,9 +10,10 @@ import os
 
 cache_config = CacheConfig(cache_type=CacheType.SQLITE, max_size=10000000, cache_dir=os.path.expanduser("~/.lotus/cache"))
 cache = CacheFactory.create_cache(cache_config)
-lm = LM(model="gpt-4o-mini", cache=cache)
+lm = LM(model="gemma-3-27b", cache=cache)
 rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
 vs = FaissVS()
+use_fake_lm = True # forces sem-filter to pass all tuples without using LLM
 
 lotus.settings.configure(lm=lm, rm=rm, vs=vs, enable_cache=True)
 data = {
@@ -132,7 +133,7 @@ df2 = pd.DataFrame(data2)
 join_instruction = "By taking {Course Name:left} I will learn {Skill:right}"
 
 cascade_args = CascadeArgs(recall_target=0.7, precision_target=0.7)
-res, stats = df1.sem_join(df2, join_instruction, cascade_args=cascade_args, return_stats=True)
+res, stats = df1.sem_join(df2, join_instruction, cascade_args=cascade_args, return_stats=True, use_fake_lm=use_fake_lm)
 
 
 print(f"Joined {df1.shape[0]} rows from df1 with {df2.shape[0]} rows from df2")

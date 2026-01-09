@@ -35,6 +35,7 @@ def sem_filter(
     show_progress_bar: bool = True,
     progress_bar_desc: str = "Filtering",
     additional_cot_instructions: str = "",
+    use_fake_lm: bool = False,
 ) -> SemanticFilterOutput:
     """
     Filters a list of documents based on a natural language instruction using a language model.
@@ -110,7 +111,7 @@ def sem_filter(
         show_safe_mode(estimated_total_cost, estimated_total_calls)
 
     lm_output: LMOutput = model(
-        inputs, show_progress_bar=show_progress_bar, progress_bar_desc=progress_bar_desc, **kwargs
+        inputs, show_progress_bar=show_progress_bar, progress_bar_desc=progress_bar_desc, use_fake_lm=use_fake_lm, **kwargs
     )
 
     postprocess_output = filter_postprocess(lm_output.outputs, model, default)
