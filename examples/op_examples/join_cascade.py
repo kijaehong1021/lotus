@@ -10,7 +10,7 @@ import os
 
 cache_config = CacheConfig(cache_type=CacheType.SQLITE, max_size=10000000, cache_dir=os.path.expanduser("~/.lotus/cache"))
 cache = CacheFactory.create_cache(cache_config)
-lm = LM(model="gemma-3-27b", cache=cache)
+lm = LM(model="gemma-3-27b-it", cache=cache)
 rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
 vs = FaissVS()
 use_fake_lm = True # forces sem-filter to pass all tuples without using LLM

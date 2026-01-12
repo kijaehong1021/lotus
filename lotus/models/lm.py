@@ -32,6 +32,8 @@ from lotus.types import (
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 logging.getLogger("httpx").setLevel(logging.CRITICAL)
 
+client = genai.Client()
+
 
 # by kjhong
 def generateFakeLMResponse() -> ModelResponse:
@@ -40,6 +42,8 @@ def generateFakeLMResponse() -> ModelResponse:
         choices=[Choices(message=Message(content="Answer: True"))],
         usage=Usage(prompt_tokens=10, completion_tokens=10, total_tokens=20),
     )
+
+
 
 def generateGeminiResponse(
     model: str, messages: list[dict[str, str]], **kwargs: dict[str, Any]
@@ -55,10 +59,8 @@ def generateGeminiResponse(
     Returns:
         ModelResponse: Response in LiteLLM ModelResponse format
     """
-    client = genai.Client()
     
     # Separate system message from other messages
-    system_instruction = None
     contents = []
     
     for msg in messages:
@@ -67,7 +69,7 @@ def generateGeminiResponse(
         
         if role == "system":
             # System messages are handled via system_instruction parameter
-            system_instruction = content
+            contents.append(types.Content(role="model", parts=[types.Part(text=content)]))
         elif role == "user":
             # Convert to Gemini Content format
             contents.append(
@@ -95,8 +97,8 @@ def generateGeminiResponse(
     
     # Build GenerateContentConfig
     config_params = {}
-    if system_instruction is not None:
-        config_params["system_instruction"] = system_instruction
+    #if system_instruction is not None:
+    #    config_params["system_instruction"] = system_instruction
     if temperature is not None:
         config_params["temperature"] = temperature
     if max_output_tokens is not None:
@@ -119,12 +121,25 @@ def generateGeminiResponse(
     else:
         # Multi-turn conversation or assistant messages - use Content list
         contents_input = contents
+
+    #print(contents_input)
     
-    response = client.models.generate_content(
-        model=model,
-        contents=contents_input,
-        config=config,
-    )
+    #print(model)
+
+    while True:
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=contents_input,
+                config=config,
+            )
+            break
+        except Exception as e:
+            print(e)
+            time.sleep(5)
+
+    #print(contents_input)
+    #print(response)
     
     # Extract response text
     response_text = response.text if hasattr(response, "text") else str(response)
@@ -151,7 +166,8 @@ def generateGeminiResponse(
 def batchCompletion(model: str, batch: list[list[dict[str, str]]], 
     drop_params: bool = True, max_workers: int = 64, **kwargs: dict[str, Any]) -> list[ModelResponse]:
 
-    if model in ['gemma-3-27b']:
+    #print('batchCompletion', model)
+    if model in ['gemma-3-27b-it']:
         return [generateGeminiResponse(model, msg) for msg in batch]
     else:
         return batch_completion(model, batch, drop_params, max_workers, **kwargs)
