@@ -165,9 +165,7 @@ def generateGeminiResponse(
 # by kjhong
 def batchCompletion(model: str, batch: list[list[dict[str, str]]], 
     drop_params: bool = True, max_workers: int = 64, **kwargs: dict[str, Any]) -> list[ModelResponse]:
-
-    #print('batchCompletion', model)
-    if model in ['gemma-3-27b-it']:
+    if model in ['gemma-3-27b-it', 'gemma-3-12b-it']:
         return [generateGeminiResponse(model, msg) for msg in batch]
     else:
         return batch_completion(model, batch, drop_params, max_workers, **kwargs)
@@ -298,6 +296,12 @@ class LM:
         )
 
         self.stats.cache_hits += len(messages) - len(uncached_data)
+
+        print('messages:', len(messages))
+        print('uncached_data:', len(uncached_data))
+        print('cache hit:', self.stats.cache_hits)
+
+        #assert False, 'stop here'
 
         # Process uncached messages in batches
         uncached_responses = self._process_uncached_messages(

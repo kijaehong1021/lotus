@@ -10,7 +10,7 @@ import os
 
 cache_config = CacheConfig(cache_type=CacheType.SQLITE, max_size=10000000, cache_dir=os.path.expanduser("~/.lotus/cache"))
 cache = CacheFactory.create_cache(cache_config)
-lm = LM(model="gemma-3-27b-it", cache=cache)
+lm = LM(model="gemma-3-12b-it", cache=cache)
 rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
 vs = FaissVS()
 use_fake_lm = True # forces sem-filter to pass all tuples without using LLM
@@ -132,7 +132,7 @@ df1 = pd.DataFrame(data)
 df2 = pd.DataFrame(data2)
 join_instruction = "By taking {Course Name:left} I will learn {Skill:right}"
 
-cascade_args = CascadeArgs(recall_target=0.7, precision_target=0.7)
+cascade_args = CascadeArgs(recall_target=0.7, precision_target=0.7, cascade_IS_random_seed=42)
 res, stats = df1.sem_join(df2, join_instruction, cascade_args=cascade_args, return_stats=True, use_fake_lm=use_fake_lm)
 
 

@@ -93,7 +93,7 @@ def sem_join(
         ...                   model, "Are these topics related?")
         >>> print(result.join_results)  # List of matching pairs
     """
-    assert False, "sem_join is not implemented yet"
+    #assert False, "sem_join is not implemented yet"
     lotus.logger.info("executing sem_join")
     filter_outputs = []
     all_raw_outputs = []
