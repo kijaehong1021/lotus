@@ -94,9 +94,6 @@ class SemSimJoinDataframe:
         keep_index: bool = False,
     ) -> pd.DataFrame:
 
-        #assert False, 'sem_sim_join call!'
-
-        lotus.logger.info('sem_sim_join call!')
 
         if isinstance(other, pd.Series):
             if other.name is None:
@@ -126,7 +123,7 @@ class SemSimJoinDataframe:
         # load index to search over
         try:
             col_index_dir = other.attrs["index_dirs"][right_on]
-            lotus.logger.info(f'loading index from {col_index_dir}')
+            #lotus.logger.info(f'loading index from {col_index_dir}')
         except KeyError:
             raise ValueError(f"Index directory for column {right_on} not found in DataFrame")
         if vs.index_dir != col_index_dir:

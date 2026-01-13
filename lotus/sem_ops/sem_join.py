@@ -94,7 +94,7 @@ def sem_join(
         >>> print(result.join_results)  # List of matching pairs
     """
     #assert False, "sem_join is not implemented yet"
-    lotus.logger.info("executing sem_join")
+    #lotus.logger.info("executing sem_join")
     filter_outputs = []
     all_raw_outputs = []
     all_explanations = []
@@ -365,7 +365,6 @@ def run_sem_sim_join(l1: pd.Series, l2: pd.Series, col1_label: str, col2_label: 
 
     K = len(l2)
     # Run sem_sim_join as helper on the sampled data
-    lotus.logger.info('l1_df.sem_sim_join call!')
     out = l1_df.sem_sim_join(l2_df, left_on=col1_label, right_on=col2_label, K=K, keep_index=True)
 
     # Correct helper scores
@@ -468,7 +467,7 @@ def join_optimizer(
 
     # Learn search-filter thresholds
 
-    lotus.logger.info(f"join_optimizer call!")
+    #lotus.logger.info(f"join_optimizer call!")
 
     sf_helper_join = run_sem_sim_join(l1, l2, col1_label, col2_label)
     sf_t_pos, sf_t_neg, sf_learn_cost = learn_join_cascade_threshold(
