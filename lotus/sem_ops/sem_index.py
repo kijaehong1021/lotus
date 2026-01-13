@@ -58,7 +58,7 @@ class SemIndexDataframe:
         if not isinstance(obj, pd.DataFrame):
             raise AttributeError("Must be a DataFrame")
 
-    @operator_cache
+    #@operator_cache
     def __call__(self, col_name: str, index_dir: str) -> pd.DataFrame:
         lotus.logger.warning(
             "Do not reset the dataframe index to ensure proper functionality of get_vectors_from_index"

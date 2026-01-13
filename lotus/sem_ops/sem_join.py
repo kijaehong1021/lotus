@@ -365,6 +365,7 @@ def run_sem_sim_join(l1: pd.Series, l2: pd.Series, col1_label: str, col2_label: 
 
     K = len(l2)
     # Run sem_sim_join as helper on the sampled data
+    lotus.logger.info('l1_df.sem_sim_join call!')
     out = l1_df.sem_sim_join(l2_df, left_on=col1_label, right_on=col2_label, K=K, keep_index=True)
 
     # Correct helper scores
@@ -466,6 +467,9 @@ def join_optimizer(
         lotus.logger.debug("Helper model is not supported yet. Default to similarity join.")
 
     # Learn search-filter thresholds
+
+    lotus.logger.info(f"join_optimizer call!")
+
     sf_helper_join = run_sem_sim_join(l1, l2, col1_label, col2_label)
     sf_t_pos, sf_t_neg, sf_learn_cost = learn_join_cascade_threshold(
         sf_helper_join,

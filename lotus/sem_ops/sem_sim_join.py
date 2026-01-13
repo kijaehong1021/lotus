@@ -81,7 +81,7 @@ class SemSimJoinDataframe:
         if not isinstance(obj, pd.DataFrame):
             raise AttributeError("Must be a DataFrame")
 
-    @operator_cache
+    #@operator_cache
     def __call__(
         self,
         other: pd.DataFrame,
@@ -93,6 +93,11 @@ class SemSimJoinDataframe:
         score_suffix: str = "",
         keep_index: bool = False,
     ) -> pd.DataFrame:
+
+        #assert False, 'sem_sim_join call!'
+
+        lotus.logger.info('sem_sim_join call!')
+
         if isinstance(other, pd.Series):
             if other.name is None:
                 raise ValueError("Other Series must have a name")
@@ -121,6 +126,7 @@ class SemSimJoinDataframe:
         # load index to search over
         try:
             col_index_dir = other.attrs["index_dirs"][right_on]
+            lotus.logger.info(f'loading index from {col_index_dir}')
         except KeyError:
             raise ValueError(f"Index directory for column {right_on} not found in DataFrame")
         if vs.index_dir != col_index_dir:
